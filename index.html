@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nestify — Construction & Site Ledger</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Confetti script for celebration feedback on saves & imports -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'] },
+          colors: {
+            brand: {
+              50: '#fffbeb',
+              100: '#fef3c7',
+              500: '#f59e0b',
+              600: '#d97706',
+              700: '#b45309',
+              800: '#92400e',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Interactive input styling with glowing focus */
+    .i {
+      width: 100%;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+      padding: 0.65rem 0.9rem;
+      background-color: #ffffff;
+      color: #0f172a;
+      font-size: 0.925rem;
+      outline: none;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .i:focus {
+      border-color: #d97706;
+      box-shadow: 0 0 0 4px rgba(217, 119, 6, 0.15);
+      transform: translateY(-1px);
+    }
+    
+    /* Bouncy micro-tactile button */
+    .b {
+      background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+      color: #ffffff;
+      border-radius: 0.75rem;
+      padding: 0.7rem 1.25rem;
+      font-weight: 600;
+      font-size: 0.925rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor: pointer;
+      box-shadow: 0 4px 14px -2px rgba(217, 119, 6, 0.35);
+    }
+    .b:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px -3px rgba(217, 119, 6, 0.45);
+    }
+    .b:active {
+      transform: scale(0.97);
+    }
+
+    /* Keyframe Animations */
+    @keyframes cardFadeIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes modalPop {
+      0% { opacity: 0; transform: scale(0.92) translateY(8px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes toastSlide {
+      from { opacity: 0; transform: translate(-50%, 20px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+    
+    .anim-card {
+      animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .anim-modal {
+      animation: modalPop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    .anim-toast {
+      animation: toastSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col font-sans selection:bg-amber-100 selection:text-amber-900">
+
+  <!-- AUTH SCREEN -->
+  <div id="auth" class="w-full max-w-md mx-auto p-4 my-auto hidden">
+    <div class="text-center mb-6 anim-card">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-amber-600 to-amber-500 text-white shadow-xl shadow-amber-600/30 mb-3 hover:rotate-6 transition-transform duration-300">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+      </div>
+      <h1 class="text-3xl font-extrabold tracking-tight text-slate-900">Nestify</h1>
+      <p class="text-sm text-slate-500 mt-1">Smart site ledger for home construction & budgets.</p>
+    </div>
+
+    <form id="af" class="bg-white border border-slate-200/90 rounded-2xl shadow-xl shadow-slate-200/50 p-6 space-y-4 anim-card">
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Email Address</label>
+        <input class="i" name="email" type="email" placeholder="name@example.com" required>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Password</label>
+        <input class="i" name="password" type="password" placeholder="•••••••• (min 6 chars)" required>
+      </div>
+      <div class="reg space-y-4">
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Your Nickname</label>
+          <input class="i" name="nickname" placeholder="e.g. Ramesh / Site Engineer">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-1">Project Name</label>
+          <input class="i" name="project_name" placeholder="e.g. Green Villa (leave blank if invited)">
+        </div>
+      </div>
+      <p id="aerr" class="text-rose-600 text-xs font-medium min-h-[1rem]"></p>
+      <button class="b w-full" id="abtn">Log in</button>
+      <button type="button" id="swap" class="text-sm font-semibold text-amber-700 hover:text-amber-800 w-full pt-1 transition">New here? Create account</button>
+    </form>
+  </div>
+
+  <!-- MAIN APP CONTAINER -->
+  <div id="app" class="w-full max-w-3xl mx-auto p-4 sm:p-6 hidden flex-1 flex flex-col">
+    <!-- Top Header -->
+    <header class="flex justify-between items-center bg-white border border-slate-200/90 px-4 py-3 rounded-2xl shadow-sm mb-4 transition-all duration-300">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-600/20 hover:scale-105 transition-transform">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] font-bold tracking-widest uppercase text-amber-700">Project</span>
+            <span class="text-slate-300">·</span>
+            <button id="nick" class="text-xs font-medium text-slate-500 hover:text-amber-700 transition flex items-center gap-1" title="Click to rename your nickname in this project"></button>
+          </div>
+          <div class="relative">
+            <select id="psw" class="font-bold text-base sm:text-lg text-slate-900 bg-transparent pr-6 cursor-pointer outline-none max-w-[55vw] truncate appearance-none" aria-label="Switch project"></select>
+            <span class="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 text-xs transition-transform group-hover:translate-y-0">▼</span>
+          </div>
+        </div>
+      </div>
+      <button id="out" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-all hover:scale-105 active:scale-95">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        <span>Exit</span>
+      </button>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-slate-200/70 p-1.5 rounded-2xl mb-4 shadow-inner">
+      <div id="tabs" class="flex gap-1 overflow-x-auto no-scrollbar scroll-smooth"></div>
+    </nav>
+
+    <!-- Active View Area -->
+    <main id="view" class="space-y-4"></main>
+  </div>
+
+<script>
+let tok=localStorage.tok||'',pid=localStorage.pid||'',user=null,tab='expenses',reg=false;
+const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const today=()=>new Date().toISOString().slice(0,10),inr=n=>'₹'+Number(n).toLocaleString('en-IN');
+
+function triggerConfetti(){
+  if(typeof confetti==='function'){
+    confetti({
+      particleCount: 45,
+      spread: 60,
+      origin: { y: 0.8 },
+      colors: ['#d97706', '#f59e0b', '#10b981', '#3b82f6']
+    });
+  }
+}
+
+async function api(p,o={}){
+  const h=tok?{Authorization:'Bearer '+tok}:{};if(pid)h['X-Project-Id']=pid;
+  if(o.json){h['Content-Type']='application/json';o.body=JSON.stringify(o.json)}
+  const r=await fetch('/api'+p,{method:o.method,body:o.body,headers:h});
+  if(!r.ok){let e='Something went wrong';try{e=(await r.json()).detail}catch{}
+    if(r.status==401&&tok){logout()} throw new Error(typeof e==='string'?e:'Please check the fields')}
+  return r.json()}
+async function openFile(p){const r=await fetch('/api'+p,{headers:{Authorization:'Bearer '+tok,'X-Project-Id':pid}});
+  if(!r.ok)return alert('Could not open file');window.open(URL.createObjectURL(await r.blob()))}
+function logout(){localStorage.removeItem('tok');tok='';start()}
+
+function showAuth(){$('#app').classList.add('hidden');$('#auth').classList.remove('hidden');
+  document.querySelectorAll('.reg').forEach(e=>e.style.display=reg?'':'none');
+  $('#abtn').textContent=reg?'Create account':'Log in';$('#swap').textContent=reg?'Have an account? Log in':'New here? Create account'}
+$('#swap').onclick=()=>{reg=!reg;showAuth()};
+$('#af').onsubmit=async e=>{e.preventDefault();$('#aerr').textContent='';
+  const d=Object.fromEntries(new FormData(e.target));
+  try{const r=await api(reg?'/register':'/login',{method:'POST',json:d});tok=r.token;localStorage.tok=tok;triggerConfetti();start()}
+  catch(x){$('#aerr').textContent=x.message}};
+$('#out').onclick=logout;
+$('#nick').onclick=async()=>{const n=prompt('Your nickname in this project',user.nickname);if(n&&n.trim()){await api('/me',{method:'PATCH',json:{nickname:n}});start()}};
+
+async function start(){
+  if(!tok)return showAuth();
+  let ps;
+  try{ps=await api('/projects');if(!ps.length)throw 0;
+    if(!ps.some(p=>p.id==pid)){pid=String(ps[0].id);localStorage.pid=pid}
+    user=await api('/me')}catch{return showAuth()}
+  if(tab=='team'&&user.role!='admin')tab='expenses';
+  $('#auth').classList.add('hidden');$('#app').classList.remove('hidden');
+  $('#psw').innerHTML=ps.map(p=>`<option value="${p.id}" ${p.id==pid?'selected':''}>${esc(p.name)}</option>`).join('')+'<option value="new">＋ New project…</option>';
+  $('#psw').onchange=async e=>{const v=e.target.value;
+    if(v=='new'){const n=prompt('New project name');
+      if(n&&n.trim()){try{const p=await api('/projects',{method:'POST',json:{name:n}});pid=String(p.id);localStorage.pid=pid;triggerConfetti()}catch(x){alert(x.message)}}
+      return start()}
+    pid=v;localStorage.pid=pid;waRows=[];start()};
+  $('#nick').textContent=user.nickname+' ✎';
+  
+  const tabs=[
+    ['expenses','Expenses','<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'],
+    ['history','History','<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>'],
+    ['labor','Labor','<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>'],
+    ['stock','Stock','<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>'],
+    ['docs','Documents','<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>']
+  ];
+  if(user.role=='admin')tabs.push(['team','Team','<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>']);
+  
+  $('#tabs').innerHTML=tabs.map(([k,l,ic])=>`<button data-t="${k}" class="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 ${k==tab?'bg-white text-slate-900 shadow-sm font-bold scale-[1.02]':'text-slate-600 hover:text-slate-900 hover:bg-slate-300/40'}">${ic}<span>${l}</span></button>`).join('');
+  document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{tab=b.dataset.t;start()});
+  render()}
+
+const card=h=>`<div class="anim-card bg-white border border-slate-200/90 rounded-2xl shadow-sm p-4 sm:p-5 mb-4 transition-all duration-200 hover:shadow-md hover:border-slate-300">${h}</div>`;
+const field=(n,ph,t='text',x='')=>`<input class="i" name="${n}" type="${t}" placeholder="${ph}" ${x}>`;
+function wire(id,fn){$(id).onsubmit=async e=>{e.preventDefault();try{await fn(e.target);triggerConfetti();render()}catch(x){alert(x.message)}}}
+
+const MET=['Cash','UPI','Bank Transfer','Cheque','Card','Other'];let waRows=[],waMeta={};
+const opt=(list,cur)=>list.map(o=>`<option ${o==cur?'selected':''}>${esc(o)}</option>`).join('');
+
+async function waUpload(f,order){
+  const fd=new FormData();fd.append('file',f);fd.append('order',order);
+  try{const r=await api('/expenses/whatsapp/preview',{method:'POST',body:fd});
+    if(!r.entries.length)return alert('No expenses or labor entries found in this chat file.');
+    waMeta=r;waRows=r.entries.map(e=>({...e,on:!dupOf(e)}));waShow()}catch(x){alert(x.message)}}
+
+function waSum(){const on=waRows.filter(e=>e.on);
+  $('#wasum').textContent=`${on.filter(e=>e.kind=='expense').length} expenses · ${on.filter(e=>e.kind=='labor').length} labor entries selected`+(waRows.filter(dupOf).length?` · ${waRows.filter(dupOf).length} duplicates already in your ledger (skipped on save)`:'')}
+
+function waShow(){
+  const row=(e,i)=>{const L=e.kind=='labor',d=`data-i="${i}"`;
+    return `<div class="border-t border-slate-100 py-3 grid grid-cols-2 gap-2 text-sm transition-all duration-150 ${dupOf(e)?'bg-rose-50/70 p-2.5 rounded-xl border border-rose-100':e.guess?'bg-amber-50/50 p-2.5 rounded-xl border border-amber-100':''}">
+    <div class="col-span-2 flex items-center justify-between text-xs">
+      <label class="flex items-center gap-2 font-semibold text-slate-700 cursor-pointer">
+        <input type="checkbox" class="rounded text-amber-600 focus:ring-amber-500 w-4 h-4 transition" ${e.on?'checked':''} ${d} data-k="on">
+        <span>Include ${e.guess?'<span class="text-amber-600 font-bold" title="Amount guessed">⚠</span>':''}</span>
+      </label>
+      <div class="flex items-center gap-2">
+        <select class="border border-slate-200 rounded-lg px-2 py-0.5 text-xs bg-white font-medium" ${d} data-k="kind">
+          <option value="expense" ${L?'':'selected'}>Expense</option>
+          <option value="labor" ${L?'selected':''}>Labor</option>
+        </select>
+        <span class="text-slate-400 truncate max-w-[120px]">from: ${esc(e.sender)}</span>
+      </div>
+    </div>
+    ${dupOf(e)?'<div class="col-span-2 text-[11px] font-semibold text-rose-600">Duplicate record detected · will be skipped on save</div>':''}
+    <input class="i" ${d} data-k="date" type="date" value="${e.date}">
+    ${L?`<input class="i" ${d} data-k="count" type="number" min="0" placeholder="Headcount" value="${e.count||''}">`
+       :`<input class="i" ${d} data-k="amount" type="number" step="any" placeholder="Amount ₹" value="${e.amount??''}">`}
+    <input class="i col-span-2" ${d} data-k="item" value="${esc(e.item)}" placeholder="Description">
+    ${L?`<input class="i col-span-2" ${d} data-k="amount" type="number" step="any" placeholder="Wages paid ₹ (optional)" value="${e.amount??''}">`
+       :`<select class="i" ${d} data-k="method">${opt([...new Set([e.method,...MET])],e.method)}</select>
+         <input class="i" ${d} data-k="paid_to" placeholder="Paid to" value="${esc(e.paid_to)}">`}
+    ${e.proof_label&&!L?`<div class="col-span-2 text-xs text-slate-500 flex items-center gap-1.5 mt-0.5">📎 <span>${esc(e.proof_label)}</span> ${e.proof?`<button type="button" class="font-semibold text-amber-700 underline hover:text-amber-800" onclick="openFile('/staged/${e.proof}')">preview photo</button>`:'· image omitted in export'}</div>`:''}
+    </div>`};
+
+  $('#wa').innerHTML=card(`
+    <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+      <div>
+        <h3 class="font-bold text-base text-slate-900">Review WhatsApp Entries (${waRows.length})</h3>
+        <p class="text-xs text-slate-500">Dates parsed as ${waMeta.order=='dmy'?'DD/MM':'MM/DD'} · ${waMeta.skipped} chat messages skipped</p>
+      </div>
+      <span class="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-semibold animate-pulse">Staged</span>
+    </div>
+    <div id="wasum" class="text-xs font-semibold text-slate-700 py-1 mb-2"></div>
+    <div class="max-h-[60vh] overflow-y-auto space-y-1 pr-1">${waRows.map(row).join('')}</div>
+    <button id="wasave" class="b w-full mt-4">Confirm &amp; Commit to Ledger</button>`);
+  
+  waSum();
+  const h=ev=>{const t=ev.target,i=t.dataset.i;if(i==null)return;const k=t.dataset.k;
+    waRows[i][k]=k=='on'?t.checked:t.value;
+    if(k=='kind'&&ev.type=='change')return waShow();
+    waSum()};
+  $('#wa').oninput=h;$('#wa').onchange=h;
+  $('#wasave').onclick=async()=>{
+    const num=v=>v===''||v==null?null:+v;
+    const rows=waRows.filter(e=>e.on&&e.item&&e.date&&(e.kind=='labor'?(+e.count>0||+e.amount>0):+e.amount>0))
+      .map(e=>({kind:e.kind,item:e.item,amount:num(e.amount),count:+e.count||0,date:e.date,method:e.method,paid_to:e.paid_to||'',proof:e.kind=='expense'?e.proof:null}));
+    if(!rows.length)return alert('No valid entries selected to save');
+    try{const s=await api('/expenses/bulk',{method:'POST',json:rows});
+      triggerConfetti();
+      toast(`Imported ${s.saved} new entries, skipped ${s.skipped} duplicates`);waRows=[];$('#wa').innerHTML=''}catch(x){alert(x.message)}}}
+
+let HL=[],LT=0,hideTot=localStorage.hideTotal==='1';
+const money=n=>hideTot?'₹ ••••••':inr(n);
+function toast(msg){
+  const t=document.createElement('div');
+  t.className='anim-toast fixed bottom-5 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs sm:text-sm font-medium rounded-xl px-4 py-2.5 shadow-2xl z-50 max-w-[90%] text-center border border-slate-700/60 flex items-center gap-2';
+  t.innerHTML=`<svg class="w-4 h-4 text-emerald-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg><span>${esc(msg)}</span>`;
+  document.body.appendChild(t);
+  setTimeout(()=>{
+    t.style.opacity='0';
+    t.style.transform='translate(-50%, 15px)';
+    t.style.transition='all 0.3s ease';
+    setTimeout(()=>t.remove(),300);
+  },4000);
+}
+const dupOf=e=>e.kind=='labor'?e.dup_labor:e.dup_expense;
+
+function histDraw(){
+  const q=$('#q').value.trim().toLowerCase(),adm=user.can_edit;
+  const F=HL.filter(x=>!q||[x.item,x.paid_to,x.by].some(s=>(s||'').toLowerCase().includes(q)));
+  if(user.can_totals){
+    const ET=HL.reduce((s,x)=>s+x.amount,0);
+    $('#ht').textContent=money(ET+LT);
+    $('#eye').innerHTML=hideTot
+      ?'<svg class="w-5 h-5 transition-transform hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18"/></svg>'
+      :'<svg class="w-5 h-5 transition-transform hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>';
+    $('#hb').innerHTML=`<span class="font-medium text-slate-700">Materials &amp; Expenses:</span> ${money(ET)} · <span class="font-medium text-slate-700">Labor:</span> ${money(LT)}`;
+    $('#hf').textContent=q?`${F.length} matches · subtotal: ${money(F.reduce((s,x)=>s+x.amount,0))}`:''}
+  else{
+    $('#ht').textContent='🔒 Restricted';
+    $('#hb').textContent=`${HL.length} entries registered (Grand total viewable by authorized users only)`;
+    $('#hf').textContent=q?`${F.length} matches`:''}
+
+  $('#hl').innerHTML=F.length?F.map((x,idx)=>`
+    <div class="anim-card bg-white border border-slate-200/90 rounded-2xl shadow-sm p-4 sm:p-5 mb-3 transition-all duration-200 hover:shadow-md hover:border-slate-300" style="animation-delay: ${Math.min(idx*35, 300)}ms">
+      <div class="flex justify-between items-start gap-3">
+        <div>
+          <h4 class="font-bold text-base text-slate-900 leading-snug">${esc(x.item)}</h4>
+          <div class="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-slate-500">
+            <span class="inline-flex items-center gap-1 font-medium bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-lg">📅 ${x.date}</span>
+            <span class="inline-flex items-center gap-1 font-medium bg-amber-50 text-amber-800 px-2.5 py-0.5 rounded-lg border border-amber-200/50">💳 ${esc(x.method)}</span>
+          </div>
+        </div>
+        <div class="text-right shrink-0">
+          <span class="text-lg font-extrabold text-slate-900 tracking-tight">${inr(x.amount)}</span>
+        </div>
+      </div>
+
+      <div class="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap justify-between items-center text-xs text-slate-500 gap-2">
+        <div>Paid to: <span class="font-semibold text-slate-700">${esc(x.paid_to||'—')}</span> · By: <span class="text-slate-700 font-medium">${esc(x.by)}</span></div>
+        <div class="flex items-center gap-3">
+          ${x.proof?`<button class="text-amber-700 hover:text-amber-800 font-semibold inline-flex items-center gap-1 transition-transform hover:scale-105" onclick="openFile('/expenses/${x.id}/proof')">📎 Receipt</button>`:''}
+          ${adm?`<button class="text-slate-500 hover:text-amber-700 font-medium inline-flex items-center gap-1 transition-colors" onclick="editExp(${x.id})">✎ Edit</button>
+                 <button class="text-slate-400 hover:text-rose-600 font-medium inline-flex items-center gap-1 transition-colors" onclick="delExp(${x.id})">🗑 Delete</button>`:''}
+        </div>
+      </div>
+    </div>`).join(''):card('<p class="text-center text-sm text-slate-500 py-6">No matching expenses found.</p>')}
+
+async function delExp(id){
+  const x=HL.find(e=>e.id==id);if(!x||!confirm(`Delete "${x.item}" (${inr(x.amount)})? This cannot be undone.`))return;
+  try{await api('/expenses/'+id,{method:'DELETE'});HL=HL.filter(e=>e.id!=id);histDraw()}catch(e){alert(e.message)}}
+
+function editExp(id){
+  const x=HL.find(e=>e.id==id),m=document.createElement('div');
+  m.className='fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-opacity';
+  m.innerHTML=`<form class="anim-modal bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-3.5">
+    <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+      <h3 class="font-bold text-base text-slate-900">Edit Expense</h3>
+      <button type="button" id="mx" class="text-slate-400 hover:text-slate-600 text-xl leading-none transition-transform hover:scale-125">&times;</button>
+    </div>
+    <div><label class="block text-xs font-semibold text-slate-500 mb-1">Item Description</label>
+    <input class="i" name="item" value="${esc(x.item)}" required></div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Amount ₹</label><input class="i" name="amount" type="number" step="any" value="${x.amount}" required></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Date</label><input class="i" name="date" type="date" value="${x.date}" required></div>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Method</label><select class="i" name="method">${opt([...new Set([x.method,...MET])],x.method)}</select></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Paid To</label><input class="i" name="paid_to" value="${esc(x.paid_to)}"></div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button class="b flex-1">Save Changes</button>
+      <button type="button" class="flex-1 border border-slate-200 font-semibold text-sm rounded-xl py-2 text-slate-600 hover:bg-slate-50 transition" id="mx2">Cancel</button>
+    </div></form>`;
+  document.body.appendChild(m);
+  m.querySelector('#mx').onclick=()=>m.remove();m.querySelector('#mx2').onclick=()=>m.remove();
+  m.querySelector('form').onsubmit=async e=>{e.preventDefault();
+    try{Object.assign(x,await api('/expenses/'+id,{method:'PUT',json:Object.fromEntries(new FormData(e.target))}));triggerConfetti();m.remove();histDraw()}catch(err){alert(err.message)}}}
+
+let LL=[];
+function labDraw(){const adm=user.can_edit;
+  $('#ll').innerHTML=LL.length?LL.map((x,idx)=>`
+    <div class="anim-card bg-white border border-slate-200/90 rounded-2xl shadow-sm p-4 sm:p-5 mb-3 transition-all duration-200 hover:shadow-md hover:border-slate-300" style="animation-delay: ${Math.min(idx*35, 300)}ms">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-bold text-slate-900">${x.date}</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-full ${x.count?'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100':'bg-slate-100 text-slate-600'}">
+              ${x.count?x.count+' workers present':'Wage-only entry'}
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 mt-1">${esc(x.notes||'No notes')} · logged by <span class="font-medium text-slate-700">${esc(x.by)}</span></p>
+        </div>
+        <div class="text-right">
+          ${x.amount?`<span class="text-base font-extrabold text-slate-900">${inr(x.amount)}</span>`:'<span class="text-xs text-slate-400 font-medium">No wage logged</span>'}
+        </div>
+      </div>
+      ${adm?`<div class="mt-3 pt-2 border-t border-slate-100 flex justify-end gap-3 text-xs">
+        <button class="text-slate-500 hover:text-amber-700 font-medium transition-colors" onclick="editLab(${x.id})">✎ Edit</button>
+        <button class="text-slate-400 hover:text-rose-600 font-medium transition-colors" onclick="delLab(${x.id})">🗑 Delete</button>
+      </div>`:''}
+    </div>`).join(''):card('<p class="text-center text-sm text-slate-500 py-6">No labor records logged yet.</p>')}
+
+async function delLab(id){
+  const x=LL.find(e=>e.id==id);if(!x||!confirm(`Delete labor log for ${x.date}? This cannot be undone.`))return;
+  try{await api('/labor/'+id,{method:'DELETE'});LL=LL.filter(e=>e.id!=id);labDraw()}catch(e){alert(e.message)}}
+
+function editLab(id){
+  const x=LL.find(e=>e.id==id),m=document.createElement('div');
+  m.className='fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50';
+  m.innerHTML=`<form class="anim-modal bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-3.5">
+    <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+      <h3 class="font-bold text-base text-slate-900">Edit Labor Entry</h3>
+      <button type="button" id="mx" class="text-slate-400 hover:text-slate-600 text-xl leading-none transition-transform hover:scale-125">&times;</button>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Date</label><input class="i" name="date" type="date" value="${x.date}" required></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Headcount</label><input class="i" name="count" type="number" min="0" value="${x.count}" required></div>
+    </div>
+    <div><label class="block text-xs font-semibold text-slate-500 mb-1">Wages Paid ₹</label><input class="i" name="amount" type="number" step="any" value="${x.amount??''}" placeholder="Optional"></div>
+    <div><label class="block text-xs font-semibold text-slate-500 mb-1">Notes</label><input class="i" name="notes" value="${esc(x.notes)}"></div>
+    <div class="flex gap-2 pt-2">
+      <button class="b flex-1">Save Changes</button>
+      <button type="button" class="flex-1 border border-slate-200 font-semibold text-sm rounded-xl py-2 text-slate-600 hover:bg-slate-50 transition" id="mx2">Cancel</button>
+    </div></form>`;
+  document.body.appendChild(m);
+  m.querySelector('#mx').onclick=()=>m.remove();m.querySelector('#mx2').onclick=()=>m.remove();
+  m.querySelector('form').onsubmit=async e=>{e.preventDefault();
+    const d=Object.fromEntries(new FormData(e.target));if(d.amount==='')delete d.amount;
+    try{Object.assign(x,await api('/labor/'+id,{method:'PUT',json:d}));triggerConfetti();m.remove();labDraw()}catch(err){alert(err.message)}}}
+
+let SL=[];
+function stkDraw(){const ed=user.can_edit;
+  $('#sl').innerHTML=SL.length?SL.map((x,idx)=>`
+    <div class="anim-card bg-white border border-slate-200/90 rounded-2xl shadow-sm p-4 sm:p-5 mb-3 transition-all duration-200 hover:shadow-md hover:border-slate-300" style="animation-delay: ${Math.min(idx*35, 300)}ms">
+      <div class="flex justify-between items-start">
+        <div>
+          <h4 class="font-bold text-base text-slate-900">${esc(x.material)}</h4>
+          <div class="text-xs text-slate-500 mt-1">📅 ${x.date} ${x.supplier?'· Supplier: <span class="text-slate-700 font-medium">'+esc(x.supplier)+'</span>':''}</div>
+          <div class="text-xs text-slate-400 mt-0.5">Logged by ${esc(x.by)}</div>
+        </div>
+        <div class="text-right">
+          <span class="inline-block px-3 py-1 bg-amber-50 text-amber-900 font-extrabold text-sm rounded-xl border border-amber-200/60 shadow-sm">
+            ${x.qty} ${esc(x.unit)}
+          </span>
+        </div>
+      </div>
+      ${ed?`<div class="mt-3 pt-2 border-t border-slate-100 flex justify-end gap-3 text-xs">
+        <button class="text-slate-500 hover:text-amber-700 font-medium transition-colors" onclick="editStk(${x.id})">✎ Edit</button>
+        <button class="text-slate-400 hover:text-rose-600 font-medium transition-colors" onclick="delStk(${x.id})">🗑 Delete</button>
+      </div>`:''}
+    </div>`).join(''):card('<p class="text-center text-sm text-slate-500 py-6">No material stock entries recorded.</p>')}
+
+async function delStk(id){
+  const x=SL.find(e=>e.id==id);if(!x||!confirm(`Delete ${x.qty} ${x.unit} of ${x.material}? This cannot be undone.`))return;
+  try{await api('/stock/'+id,{method:'DELETE'});SL=SL.filter(e=>e.id!=id);stkDraw()}catch(e){alert(e.message)}}
+
+function editStk(id){
+  const x=SL.find(e=>e.id==id),m=document.createElement('div');
+  m.className='fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50';
+  m.innerHTML=`<form class="anim-modal bg-white border border-slate-200 rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-3.5">
+    <div class="flex justify-between items-center pb-2 border-b border-slate-100">
+      <h3 class="font-bold text-base text-slate-900">Edit Stock Entry</h3>
+      <button type="button" id="mx" class="text-slate-400 hover:text-slate-600 text-xl leading-none transition-transform hover:scale-125">&times;</button>
+    </div>
+    <div><label class="block text-xs font-semibold text-slate-500 mb-1">Material Name</label><input class="i" name="material" value="${esc(x.material)}" required></div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Quantity</label><input class="i" name="qty" type="number" step="any" value="${x.qty}" required></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Unit</label><input class="i" name="unit" value="${esc(x.unit)}" required></div>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Date</label><input class="i" name="date" type="date" value="${x.date}" required></div>
+      <div><label class="block text-xs font-semibold text-slate-500 mb-1">Supplier</label><input class="i" name="supplier" value="${esc(x.supplier)}"></div>
+    </div>
+    <div class="flex gap-2 pt-2">
+      <button class="b flex-1">Save Changes</button>
+      <button type="button" class="flex-1 border border-slate-200 font-semibold text-sm rounded-xl py-2 text-slate-600 hover:bg-slate-50 transition" id="mx2">Cancel</button>
+    </div></form>`;
+  document.body.appendChild(m);
+  m.querySelector('#mx').onclick=()=>m.remove();m.querySelector('#mx2').onclick=()=>m.remove();
+  m.querySelector('form').onsubmit=async e=>{e.preventDefault();
+    try{Object.assign(x,await api('/stock/'+id,{method:'PUT',json:Object.fromEntries(new FormData(e.target))}));triggerConfetti();m.remove();stkDraw()}catch(err){alert(err.message)}}}
+
+async function setPerm(id,k,el){
+  try{await api('/team/'+id+'/permissions',{method:'PATCH',json:{[k]:el.checked}});triggerConfetti();toast('Permission updated')}
+  catch(e){el.checked=!el.checked;alert(e.message)}}
+
+async function render(){
+  const v=$('#view');
+  if(tab=='expenses'){
+    v.innerHTML=card(`
+      <h3 class="font-bold text-base text-slate-900 mb-3 flex items-center gap-2">
+        <span>Record Daily Expense</span>
+      </h3>
+      <form id="f" class="grid grid-cols-2 gap-3">
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Item / Description</label>
+          ${field('item','e.g. 50 bags Ultratech cement, sand lorry','text','required')}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Amount ₹</label>
+          ${field('amount','Amount in ₹','number','required step="any"')}
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Date</label>
+          <input class="i" name="date" type="date" value="${today()}" required>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Payment Method</label>
+          <select class="i" name="method"><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Cheque</option><option>Card</option><option>Other</option></select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Paid To (Vendor/Worker)</label>
+          ${field('paid_to','e.g. Ramesh Hardware, Mason lead')}
+        </div>
+        <div class="col-span-2">
+          <label class="block text-xs font-semibold text-slate-500 mb-1">Receipt / Bill Proof (Optional)</label>
+          <input class="i text-xs cursor-pointer file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 transition" name="proof" type="file" accept="image/*,.pdf">
+        </div>
+        <button class="b col-span-2">Add Expense to Ledger</button>
+      </form>`)
+    +card(`
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="font-bold text-base text-slate-900">Bulk Ingestion &amp; Migration</h3>
+          <p class="text-xs text-slate-500">Import past records from exported WhatsApp chats (.zip/.txt) or spreadsheets</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t border-slate-100 text-sm">
+        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-700 hover:border-amber-500 hover:text-amber-700 hover:shadow-sm cursor-pointer font-semibold text-xs transition bg-slate-50">
+          <span>⬆ Import CSV</span><input id="csv" type="file" accept=".csv" class="hidden">
+        </label>
+        <label class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-700 hover:border-amber-500 hover:text-amber-700 hover:shadow-sm cursor-pointer font-semibold text-xs transition bg-slate-50">
+          <span>💬 Import WhatsApp (.zip / .txt)</span><input id="wafile" type="file" accept=".txt,.zip" class="hidden">
+        </label>
+        <select id="waorder" class="border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs bg-white font-medium text-slate-600 outline-none focus:ring-2 focus:ring-amber-500/20">
+          <option value="auto">Chat dates: Auto-detect</option>
+          <option value="dmy">Dates: DD/MM/YY</option>
+          <option value="mdy">Dates: MM/DD/YY</option>
+        </select>
+      </div>
+      <p class="text-[11px] text-slate-400 mt-2">CSV columns: date,item,amount,method,paid_to · WhatsApp: Choose "Export Chat" (Include media to keep receipts) and drop the archive directly.</p>`)
+    +'<div id="wa"></div>';
+    wire('#f',async f=>{await api('/expenses',{method:'POST',body:new FormData(f)})});
+    $('#csv').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;const fd=new FormData();fd.append('file',f);
+      try{const r=await api('/expenses/import',{method:'POST',body:fd});
+        triggerConfetti();
+        toast(`Imported ${r.imported} new entries, skipped ${r.duplicates} duplicates`+(r.skipped_rows.length?` · ${r.skipped_rows.length} unreadable rows (${r.skipped_rows.join(', ')})`:''))}catch(x){alert(x.message)}};
+    $('#wafile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)waUpload(f,$('#waorder').value)};
+  }
+  if(tab=='history'){
+    const [e,t]=await Promise.all([api('/expenses'),user.can_totals?api('/totals'):null]);
+    HL=e;LT=t?t.labor:0;
+    v.innerHTML=card(`
+      <div class="flex items-center justify-between mb-1">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Total Project Outlay</span>
+        ${user.can_totals?`<button id="eye" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition" aria-label="Toggle total visibility"></button>`:''}
+      </div>
+      <div id="ht" class="text-3xl font-black text-slate-900 tracking-tight transition-all duration-300"></div>
+      <div id="hb" class="text-xs text-slate-500 mt-1"></div>
+      <div class="mt-4 pt-3 border-t border-slate-100">
+        <input id="q" class="i" placeholder="🔍 Search description, vendor or nickname…">
+        <div id="hf" class="text-xs font-semibold text-amber-800 mt-1.5"></div>
+      </div>`)+'<div id="hl" class="space-y-3"></div>';
+    $('#q').oninput=histDraw;
+    if(user.can_totals)$('#eye').onclick=()=>{hideTot=!hideTot;localStorage.hideTotal=hideTot?'1':'0';histDraw()};
+    histDraw();
+  }
+  if(tab=='labor'){
+    LL=await api('/labor');
+    v.innerHTML=card(`
+      <h3 class="font-bold text-base text-slate-900 mb-3">Daily Labor &amp; Wage Log</h3>
+      <form id="f" class="grid grid-cols-2 gap-3">
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Date</label><input class="i" name="date" type="date" value="${today()}" required></div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Worker Headcount</label>${field('count','Number of labourers','number','required min="0"')}</div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Wages Paid ₹ (Optional)</label>${field('amount','Wage sum ₹','number','step="any"')}</div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Work Notes</label>${field('notes','e.g. 1st floor pillar curing')}</div>
+        <button class="b col-span-2">Log Headcount &amp; Wages</button>
+      </form>`)+'<div id="ll" class="space-y-3"></div>';
+    labDraw();
+    wire('#f',f=>{const d=Object.fromEntries(new FormData(f));if(d.amount==='')delete d.amount;return api('/labor',{method:'POST',json:d})});
+  }
+  if(tab=='stock'){
+    SL=await api('/stock');
+    v.innerHTML=card(`
+      <h3 class="font-bold text-base text-slate-900 mb-3">Material Inventory Intake</h3>
+      <form id="f" class="grid grid-cols-2 gap-3">
+        <div class="col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Material Name</label>${field('material','e.g. TMT Steel 12mm, Red Bricks','text','required')}</div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Date Delivered</label><input class="i" name="date" type="date" value="${today()}" required></div>
+        <div class="grid grid-cols-2 gap-2">
+          <div><label class="block text-xs font-semibold text-slate-500 mb-1">Qty</label>${field('qty','100','number','required step="any"')}</div>
+          <div><label class="block text-xs font-semibold text-slate-500 mb-1">Unit</label>${field('unit','bags/tons','text','required')}</div>
+        </div>
+        <div class="col-span-2"><label class="block text-xs font-semibold text-slate-500 mb-1">Supplier / Dealer</label>${field('supplier','e.g. Mahadev Traders')}</div>
+        <button class="b col-span-2">Record Material Inward</button>
+      </form>`)+'<div id="sl" class="space-y-3"></div>';
+    stkDraw();
+    wire('#f',f=>api('/stock',{method:'POST',json:Object.fromEntries(new FormData(f))}));
+  }
+  if(tab=='docs'){
+    if(!user.can_docs){v.innerHTML=card('<div class="text-center py-8"><span class="text-4xl inline-block mb-2">🔒</span><h4 class="font-bold text-slate-800">Document Vault is Locked</h4><p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">House blueprints and sanctions are protected. Ask the admin to toggle document access for your profile.</p></div>');return}
+    const L=await api('/documents');
+    v.innerHTML=(user.role=='admin'?card(`
+      <h3 class="font-bold text-base text-slate-900 mb-3">Store Official Plan / Permit</h3>
+      <form id="f" class="space-y-3">
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">Document Title</label>${field('title','e.g. Sanctioned Blueprint 1st Floor, Bescom NOC','text','required')}</div>
+        <div><label class="block text-xs font-semibold text-slate-500 mb-1">File (PDF or Image)</label><input class="i text-xs cursor-pointer file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100 transition" name="file" type="file" accept="image/*,.pdf" required></div>
+        <button class="b w-full">Securely Store Document</button>
+      </form>`):'')
+    +(L.length?L.map((x,idx)=>`
+      <div class="anim-card bg-white border border-slate-200/90 rounded-2xl shadow-sm p-4 sm:p-5 mb-3 transition-all duration-200 hover:shadow-md hover:border-slate-300" style="animation-delay: ${Math.min(idx*35, 300)}ms">
+        <div class="flex justify-between items-center">
+          <div>
+            <h4 class="font-bold text-slate-900">${esc(x.title)}</h4>
+            <span class="text-xs text-slate-400">Added by ${esc(x.by)}</span>
+          </div>
+          <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 text-amber-800 hover:bg-amber-100 font-semibold text-xs transition-transform hover:scale-105 active:scale-95" onclick="openFile('/documents/${x.id}/file')">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+            <span>Open File</span>
+          </button>
+        </div>
+      </div>`).join(''):card('<p class="text-center text-sm text-slate-500 py-6">No documents saved yet.</p>'));
+    if(user.role=='admin')wire('#f',f=>api('/documents',{method:'POST',body:new FormData(f)}));
+  }
+  if(tab=='team'){
+    const t=await api('/members');
+    v.innerHTML=card(`
+      <h3 class="font-bold text-base text-slate-900 mb-2">Invite Collaborator to Project</h3>
+      <form id="f" class="flex gap-2">
+        <div class="flex-1">${field('email','family or supervisor email','email','required')}</div>
+        <button class="b shrink-0">Invite</button>
+      </form>
+      <p class="text-xs text-slate-400 mt-2">Registered users are linked immediately; new users join this project when they sign up with this email.</p>`)
+    +t.members.map((m,idx)=>{
+      const initials = (m.nickname || m.email || '?').slice(0, 2).toUpperCase();
+      return `
+        <div class="anim-card bg-white border border-slate-200/90 rounded-2xl shadow-sm p-4 sm:p-5 mb-3 transition-all duration-200 hover:shadow-md hover:border-slate-300" style="animation-delay: ${Math.min(idx*35, 300)}ms">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs shrink-0 shadow-inner">
+                ${initials}
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-bold text-slate-900">${esc(m.nickname)}</span>
+                  <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${m.role=='admin'?'bg-amber-100 text-amber-800 border border-amber-200/60':'bg-slate-100 text-slate-600'}">${m.role}</span>
+                </div>
+                <span class="text-xs text-slate-400">${esc(m.email)}</span>
+              </div>
+            </div>
+            ${m.role=='admin'?'<span class="text-xs font-semibold text-slate-400 italic">Full project privileges</span>':`
+              <div class="flex items-center gap-3 text-xs bg-slate-50 border border-slate-100 rounded-xl px-3 py-2 shadow-inner">
+                <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700 hover:text-slate-900">
+                  <input type="checkbox" class="rounded text-amber-600 focus:ring-amber-500 transition" ${m.can_docs?'checked':''} onchange="setPerm(${m.id},'can_view_docs',this)">
+                  <span>Documents</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700 hover:text-slate-900">
+                  <input type="checkbox" class="rounded text-amber-600 focus:ring-amber-500 transition" ${m.can_totals?'checked':''} onchange="setPerm(${m.id},'can_view_totals',this)">
+                  <span>Totals</span>
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer font-medium text-slate-700 hover:text-slate-900">
+                  <input type="checkbox" class="rounded text-amber-600 focus:ring-amber-500 transition" ${m.can_edit?'checked':''} onchange="setPerm(${m.id},'can_edit_entries',this)">
+                  <span>Can Edit</span>
+                </label>
+              </div>`}
+          </div>
+        </div>`}).join('')
+    +(t.invites.length?card(`<h4 class="font-bold text-xs uppercase tracking-wider text-slate-500 mb-2">Pending Invitations</h4><div class="space-y-1.5 text-xs text-slate-600">${t.invites.map(i=>`<div class="flex items-center gap-1.5">✉️ <span class="font-medium">${esc(i)}</span></div>`).join('')}</div>`):'');
+    wire('#f',async f=>{const r=await api('/invite',{method:'POST',json:Object.fromEntries(new FormData(f))});toast(r.added?'Linked directly! User already has an account.':'Invite stored. They will join upon registration.')});
+  }
+}
+start();
+</script>
+</body>
+</html>

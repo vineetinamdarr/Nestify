@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+pyjwt
+python-multipart
+# for PostgreSQL also: psycopg2-binary
