@@ -1,7 +1,8 @@
 fastapi
 uvicorn
 sqlalchemy
-pydantic
-pyjwt
+passlib[bcrypt]
+python-jose[cryptography]
 python-multipart
-# for PostgreSQL also: psycopg2-binary
+pydantic
+psycopg2-binary
